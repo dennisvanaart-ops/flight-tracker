@@ -21,8 +21,21 @@
 import { Aircraft } from "@/types/aircraft";
 
 const ADSB_BASE_URL = "https://api.adsb.lol/v2";
+const ADSB_ROUTE_URL = "https://api.adsb.lol/api/0/route";
 const REQUEST_TIMEOUT = 10_000;
+const ROUTE_TIMEOUT = 5_000;
 const KM_TO_NM = 0.539957;
+
+// Server-side route cache: callsign → {departure, arrival, cachedAt}
+const ROUTE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minuten
+
+interface RouteCacheEntry {
+  departureAirport: string | null;
+  arrivalAirport: string | null;
+  cachedAt: number;
+}
+
+const routeCache = new Map<string, RouteCacheEntry>();
 
 // ────────────────────────────────────────────────────────────────────────────
 // Error types
@@ -118,6 +131,73 @@ function normalise(ac: AdsbAc): Aircraft {
     aircraftType: ac.desc ?? ac.t ?? null,
     operator: ac.ownOp ?? null,
   };
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Route lookup
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface RouteResult {
+  departureAirport: string | null;
+  arrivalAirport: string | null;
+}
+
+/**
+ * Haalt vertrek- en aankomstluchthaven op voor een callsign.
+ *
+ * Endpoint: GET https://api.adsb.lol/api/0/route/{callsign}/{lat}/{lon}
+ * Response: { airport_codes: "EHAM-LEMD" | "unknown", ... }
+ *
+ * Resultaten worden 5 minuten gecached per callsign.
+ * Geeft altijd een RouteResult terug (nulls bij ontbreking/fout).
+ */
+export async function fetchRoute(
+  callsign: string,
+  lat: number,
+  lon: number
+): Promise<RouteResult> {
+  const key = callsign.trim().toUpperCase();
+  if (!key) return { departureAirport: null, arrivalAirport: null };
+
+  // Cache check
+  const cached = routeCache.get(key);
+  if (cached && Date.now() - cached.cachedAt < ROUTE_CACHE_TTL_MS) {
+    return { departureAirport: cached.departureAirport, arrivalAirport: cached.arrivalAirport };
+  }
+
+  const url = `${ADSB_ROUTE_URL}/${encodeURIComponent(key)}/${lat.toFixed(4)}/${lon.toFixed(4)}`;
+
+  let data: { airport_codes?: string } | null = null;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(ROUTE_TIMEOUT),
+    });
+    if (res.ok) {
+      data = await res.json();
+    } else {
+      console.warn(`[adsb.lol route] HTTP ${res.status} voor callsign ${key}`);
+    }
+  } catch (err) {
+    console.warn(`[adsb.lol route] Fout voor callsign ${key}:`, err instanceof Error ? err.message : err);
+  }
+
+  let departureAirport: string | null = null;
+  let arrivalAirport: string | null = null;
+
+  if (data?.airport_codes && data.airport_codes !== "unknown") {
+    const parts = data.airport_codes.split("-");
+    departureAirport = parts[0] || null;
+    arrivalAirport = parts[parts.length - 1] || null;
+    // Als vertrek en aankomst gelijk zijn, was de split ongeldig
+    if (departureAirport === arrivalAirport) {
+      departureAirport = null;
+      arrivalAirport = null;
+    }
+  }
+
+  routeCache.set(key, { departureAirport, arrivalAirport, cachedAt: Date.now() });
+  return { departureAirport, arrivalAirport };
 }
 
 // ────────────────────────────────────────────────────────────────────────────

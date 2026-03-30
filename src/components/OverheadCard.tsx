@@ -26,11 +26,10 @@ function formatHeading(degrees: number | null): string {
 }
 
 export default function OverheadCard({ aircraft: a, detail }: OverheadCardProps) {
-  // Airline: statische lookup → operator uit adsb.lol → leeg
   const airlineName = detail.airline || a.operator || null;
-  // Type en registratie komen direct uit adsb.lol
   const aircraftType = a.aircraftType;
   const registration = a.registration;
+  const hasRoute = detail.departureAirport || detail.arrivalAirport;
 
   return (
     <div className="px-6 py-8 md:py-12">
@@ -42,9 +41,22 @@ export default function OverheadCard({ aircraft: a, detail }: OverheadCardProps)
       </div>
 
       {/* Airline / operator */}
-      <p className="text-lg md:text-xl text-gray-500 mb-6">
+      <p className="text-lg md:text-xl text-gray-500 mb-4">
         {detail.loading ? "Laden..." : airlineName || "—"}
       </p>
+
+      {/* Route: vertrek → aankomst */}
+      {hasRoute && (
+        <div className="flex items-center gap-3 mb-6 text-xl md:text-2xl">
+          <span className="font-mono font-semibold text-gray-800">
+            {detail.departureAirport || "???"}
+          </span>
+          <span className="text-gray-300">→</span>
+          <span className="font-mono font-semibold text-gray-800">
+            {detail.arrivalAirport || "???"}
+          </span>
+        </div>
+      )}
 
       {/* Data grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-4">

@@ -13,8 +13,8 @@ const EMPTY_DETAIL: FlightDetail = {
   error: null,
 };
 
-// Cache voor airline lookups (per icao24)
-const cache = new Map<string, string | null>();
+// Cache airline lookups per icao24 (airline verandert niet tijdens een vlucht)
+const airlineCache = new Map<string, string | null>();
 
 export function useFlightDetail(
   selectedIcao: string | null,
@@ -23,38 +23,60 @@ export function useFlightDetail(
   const [detail, setDetail] = useState<FlightDetail>(EMPTY_DETAIL);
   const abortRef = useRef<AbortController | null>(null);
 
-  const fetchAirline = useCallback(
-    async (icao24: string, callsign: string | null) => {
-      // Check cache
-      if (cache.has(icao24)) {
-        const airline = cache.get(icao24) ?? null;
-        setDetail((prev) => ({ ...prev, airline, loading: false, error: null }));
-        return;
-      }
+  const fetchDetail = useCallback(
+    async (selected: Aircraft) => {
+      const { icao24, callsign, latitude, longitude } = selected;
 
-      if (!callsign) {
-        cache.set(icao24, null);
-        setDetail((prev) => ({ ...prev, airline: null, loading: false }));
-        return;
-      }
+      // Check airline cache
+      const cachedAirline = airlineCache.has(icao24)
+        ? airlineCache.get(icao24)!
+        : undefined;
 
-      setDetail((prev) => ({ ...prev, loading: true, error: null }));
+      // Zet direct de velden die we al hebben (uit adsb.lol Aircraft-object)
+      setDetail({
+        airline: cachedAirline ?? null,
+        aircraftType: selected.aircraftType,
+        registration: selected.registration,
+        departureAirport: null,
+        arrivalAirport: null,
+        loading: true,
+        error: null,
+      });
 
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
 
       try {
-        const params = new URLSearchParams({ callsign });
+        const params = new URLSearchParams();
+        if (callsign) params.set("callsign", callsign);
+        if (latitude != null) params.set("lat", latitude.toString());
+        if (longitude != null) params.set("lon", longitude.toString());
+
         const res = await fetch(`/api/aircraft/${icao24}?${params}`, {
           signal: controller.signal,
         });
         const data = await res.json();
-        const airline: string | null = res.ok ? (data.airline ?? null) : null;
-        cache.set(icao24, airline);
-        setDetail((prev) => ({ ...prev, airline, loading: false, error: null }));
+
+        if (!res.ok) {
+          throw new Error(data.error || "Fout bij ophalen details");
+        }
+
+        const airline: string | null = data.airline ?? null;
+        airlineCache.set(icao24, airline);
+
+        setDetail({
+          airline,
+          aircraftType: selected.aircraftType,
+          registration: selected.registration,
+          departureAirport: data.departureAirport ?? null,
+          arrivalAirport: data.arrivalAirport ?? null,
+          loading: false,
+          error: null,
+        });
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
+        // Detail-fetch mislukt: toon wat we al hebben, geen crashende UI
         setDetail((prev) => ({ ...prev, loading: false, error: null }));
       }
     },
@@ -68,24 +90,17 @@ export function useFlightDetail(
     }
 
     const selected = aircraft.find((a) => a.icao24 === selectedIcao);
+    if (!selected) {
+      setDetail(EMPTY_DETAIL);
+      return;
+    }
 
-    // Registration en aircraftType komen direct uit het Aircraft-object (adsb.lol)
-    setDetail({
-      airline: null,
-      aircraftType: selected?.aircraftType ?? null,
-      registration: selected?.registration ?? null,
-      departureAirport: null,
-      arrivalAirport: null,
-      loading: true,
-      error: null,
-    });
-
-    fetchAirline(selectedIcao, selected?.callsign ?? null);
+    fetchDetail(selected);
 
     return () => {
       abortRef.current?.abort();
     };
-  }, [selectedIcao, aircraft, fetchAirline]);
+  }, [selectedIcao, aircraft, fetchDetail]);
 
   return detail;
 }
