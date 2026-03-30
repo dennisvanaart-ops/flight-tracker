@@ -2,6 +2,9 @@
 
 import { ScoredAircraft } from "@/lib/geo";
 import { FlightDetail } from "@/types/aircraft";
+import { getAircraftCategory } from "@/lib/aircraftCategory";
+import AircraftIcon from "@/components/AircraftIcon";
+import AirlineLogo from "@/components/AirlineLogo";
 
 interface OverheadCardProps {
   aircraft: ScoredAircraft;
@@ -30,36 +33,54 @@ export default function OverheadCard({ aircraft: a, detail }: OverheadCardProps)
   const aircraftType = a.aircraftType;
   const registration = a.registration;
   const hasRoute = detail.departureAirport || detail.arrivalAirport;
+  const category = getAircraftCategory(aircraftType);
 
   return (
     <div className="px-6 py-8 md:py-12">
-      {/* Callsign */}
-      <div className="mb-1">
-        <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 font-mono">
-          {a.callsign || a.icao24.toUpperCase()}
-        </h2>
+      {/* Top section: text left, aircraft icon right */}
+      <div className="flex items-start gap-6">
+        <div className="flex-1 min-w-0">
+          {/* Callsign */}
+          <div className="mb-1">
+            <h2 className="text-4xl md:text-6xl font-bold tracking-tight text-gray-900 font-mono">
+              {a.callsign || a.icao24.toUpperCase()}
+            </h2>
+          </div>
+
+          {/* Airline badge + name */}
+          <div className="flex items-center gap-2 mb-4">
+            <AirlineLogo callsign={a.callsign} airlineName={airlineName} />
+            <p className="text-lg md:text-xl text-gray-500 truncate">
+              {detail.loading ? "Laden..." : airlineName || "—"}
+            </p>
+          </div>
+
+          {/* Route: vertrek → aankomst */}
+          {hasRoute && (
+            <div className="flex items-center gap-3 mb-2 text-xl md:text-2xl">
+              <span className="font-mono font-semibold text-gray-800">
+                {detail.departureAirport || "???"}
+              </span>
+              <span className="text-gray-300">→</span>
+              <span className="font-mono font-semibold text-gray-800">
+                {detail.arrivalAirport || "???"}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Aircraft silhouette, rotated to heading */}
+        <div className="shrink-0 pt-1 opacity-80">
+          <AircraftIcon
+            category={category}
+            heading={a.trueTrack ?? undefined}
+            size={80}
+          />
+        </div>
       </div>
 
-      {/* Airline / operator */}
-      <p className="text-lg md:text-xl text-gray-500 mb-4">
-        {detail.loading ? "Laden..." : airlineName || "—"}
-      </p>
-
-      {/* Route: vertrek → aankomst */}
-      {hasRoute && (
-        <div className="flex items-center gap-3 mb-6 text-xl md:text-2xl">
-          <span className="font-mono font-semibold text-gray-800">
-            {detail.departureAirport || "???"}
-          </span>
-          <span className="text-gray-300">→</span>
-          <span className="font-mono font-semibold text-gray-800">
-            {detail.arrivalAirport || "???"}
-          </span>
-        </div>
-      )}
-
       {/* Data grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-4">
+      <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-4">
         <DataField label="Hoogte" value={formatAltitude(a.baroAltitude)} />
         <DataField label="Snelheid" value={formatSpeed(a.velocity)} />
         <DataField label="Richting" value={formatHeading(a.trueTrack)} />
