@@ -2,8 +2,6 @@
 
 import { ScoredAircraft } from "@/lib/geo";
 import { FlightDetail } from "@/types/aircraft";
-import { getAircraftCategory } from "@/lib/aircraftCategory";
-import AircraftIcon from "@/components/AircraftIcon";
 import AirlineLogo from "@/components/AirlineLogo";
 
 interface OverheadCardProps {
@@ -16,7 +14,7 @@ interface OverheadCardProps {
 function formatAltitude(meters: number | null): string {
   if (meters === null) return "—";
   const fl = Math.round(meters / 30.48) * 100;
-  return `FL${fl}`;
+  return `FL ${fl}`;
 }
 
 function formatSpeed(ms: number | null): string {
@@ -28,7 +26,7 @@ function getStatusText(distanceKm: number): string {
   if (distanceKm <= 5)  return "recht boven je locatie";
   if (distanceKm <= 15) return "bijna boven je locatie";
   if (distanceKm <= 30) return "vlakbij je locatie";
-  return `op ${distanceKm} km van je locatie`;
+  return `${distanceKm} km van je locatie`;
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -36,7 +34,6 @@ function getStatusText(distanceKm: number): string {
 export default function OverheadCard({ aircraft: a, detail }: OverheadCardProps) {
   const airlineName  = detail.airline || a.operator || null;
   const aircraftType = a.aircraftType;
-  const category     = getAircraftCategory(aircraftType);
   const statusText   = getStatusText(a.distanceKm);
 
   const dep     = detail.departureAirport;
@@ -46,92 +43,92 @@ export default function OverheadCard({ aircraft: a, detail }: OverheadCardProps)
   const hasRoute = !!(dep || arr);
 
   return (
-    <div className="px-6 py-8 md:px-10 md:py-12 max-w-lg mx-auto w-full">
+    <div className="px-6 py-8 md:px-10 md:py-10 max-w-xl mx-auto w-full">
 
-      {/* ── 1. Header: airline + callsign ──────────────────────────────── */}
-      <div className="flex items-center gap-3 mb-1">
+      {/* ── 1. Airline header ─────────────────────────────────────────── */}
+      <div className="flex items-start gap-3 mb-1">
         <AirlineLogo callsign={a.callsign} airlineName={airlineName} />
         <div className="min-w-0">
-          <p className="text-lg font-semibold text-gray-900 leading-tight truncate">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight truncate">
             {detail.loading ? "Laden…" : (airlineName || "Onbekende airline")}
-          </p>
-          <p className="text-sm font-mono text-gray-400 leading-tight">
+          </h2>
+          <p className="text-sm font-mono text-gray-400 mt-0.5">
             {a.callsign || a.icao24.toUpperCase()}
+            {a.registration ? ` · ${a.registration}` : ""}
           </p>
         </div>
       </div>
 
       {/* ── 2. Status ──────────────────────────────────────────────────── */}
-      <p className="text-sm text-gray-400 mt-3 mb-8">
+      <p className="text-sm font-semibold text-emerald-600 uppercase tracking-wide mt-3 mb-8">
         {statusText}
       </p>
 
-      {/* ── 3. Route bar (only when known) ─────────────────────────────── */}
-      {hasRoute && (
+      {/* ── 3. Route section ───────────────────────────────────────────── */}
+      {hasRoute ? (
         <div className="mb-8">
-          {/* IATA codes + connecting line */}
-          <div className="flex items-center gap-3">
+          {/* Airport codes + names */}
+          <div className="flex justify-between items-start">
+
             {/* Departure */}
-            <div className="shrink-0 text-left w-[72px] md:w-[88px]">
-              <div className="text-3xl md:text-4xl font-mono font-bold text-gray-900 leading-none">
+            <div className="text-left max-w-[44%]">
+              <div className="text-5xl md:text-6xl font-bold text-gray-900 leading-none tracking-tight">
                 {dep || "???"}
               </div>
-            </div>
-
-            {/* Connecting line with small plane marker */}
-            <div className="flex flex-1 items-center gap-1.5">
-              <div className="flex-1 h-px bg-gray-200" />
-              <svg
-                viewBox="0 0 200 300"
-                className="w-3.5 h-auto text-gray-300 shrink-0"
-                aria-hidden="true"
-              >
-                <path fill="currentColor" d="M100,14C100,14 112,35 112,60L112,208C112,248 106,281 100,289C94,281 88,248 88,208L88,60C88,35 100,14 100,14Z"/>
-                <path fill="currentColor" d="M90,112L6,160L10,178L90,138Z"/>
-                <path fill="currentColor" d="M110,112L194,160L190,178L110,138Z"/>
-                <path fill="currentColor" d="M90,234L37,257L40,266L90,249Z"/>
-                <path fill="currentColor" d="M110,234L163,257L160,266L110,249Z"/>
-              </svg>
-              <div className="flex-1 h-px bg-gray-200" />
+              {depName && (
+                <p className="text-sm text-gray-500 mt-2 leading-snug">{depName}</p>
+              )}
             </div>
 
             {/* Arrival */}
-            <div className="shrink-0 text-right w-[72px] md:w-[88px]">
-              <div className="text-3xl md:text-4xl font-mono font-bold text-gray-900 leading-none">
+            <div className="text-right max-w-[44%]">
+              <div className="text-5xl md:text-6xl font-bold text-gray-900 leading-none tracking-tight">
                 {arr || "???"}
               </div>
+              {arrName && (
+                <p className="text-sm text-gray-500 mt-2 leading-snug">{arrName}</p>
+              )}
             </div>
           </div>
 
-          {/* City names */}
-          {(depName || arrName) && (
-            <div className="flex justify-between mt-1.5">
-              <p className="text-xs text-gray-400 max-w-[40%] leading-snug">
-                {depName || ""}
-              </p>
-              <p className="text-xs text-gray-400 max-w-[40%] text-right leading-snug">
-                {arrName || ""}
-              </p>
-            </div>
-          )}
+          {/* Progress line with plane marker */}
+          <div className="flex items-center mt-6 gap-0">
+            {/* Departure dot */}
+            <div className="w-3 h-3 rounded-full bg-gray-800 shrink-0 z-10" />
+
+            {/* Left line */}
+            <div className="flex-1 h-px bg-gray-300" />
+
+            {/* Plane marker — ✈ rotated to point right */}
+            <span
+              className="text-xl text-gray-600 mx-1 shrink-0 leading-none select-none"
+              style={{ display: "inline-block", transform: "rotate(45deg)" }}
+              aria-hidden="true"
+            >
+              ✈
+            </span>
+
+            {/* Right line — lighter, "not yet flown" */}
+            <div className="flex-1 h-px bg-gray-200" />
+
+            {/* Arrival dot — hollow */}
+            <div className="w-3 h-3 rounded-full border-2 border-gray-300 shrink-0 z-10" />
+          </div>
         </div>
+      ) : (
+        /* No route: just a separator */
+        <div className="mb-8 h-px bg-gray-100" />
       )}
 
-      {/* ── 4. Aircraft visual — centred hero ──────────────────────────── */}
-      <div className="flex justify-center mb-5">
-        <AircraftIcon
-          category={category}
-          className="w-[120px] md:w-[150px] h-auto"
-        />
-      </div>
+      {/* ── 4. Aircraft type ───────────────────────────────────────────── */}
+      {aircraftType && (
+        <p className="text-base font-medium text-gray-700 mb-6">
+          {aircraftType}
+        </p>
+      )}
 
-      {/* ── 5. Aircraft type ───────────────────────────────────────────── */}
-      <p className="text-center text-sm font-medium text-gray-500 tracking-wide mb-8">
-        {aircraftType || "Onbekend type"}
-      </p>
-
-      {/* ── 6. Key stats ───────────────────────────────────────────────── */}
-      <div className="flex justify-center gap-10 md:gap-16">
+      {/* ── 5. Key stats ───────────────────────────────────────────────── */}
+      <div className="flex gap-8 md:gap-12">
         <Stat label="Hoogte"   value={formatAltitude(a.baroAltitude)} />
         <Stat label="Snelheid" value={formatSpeed(a.velocity)} />
         <Stat label="Afstand"  value={`${a.distanceKm} km`} />
@@ -145,7 +142,7 @@ export default function OverheadCard({ aircraft: a, detail }: OverheadCardProps)
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="text-center">
+    <div>
       <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-0.5">
         {label}
       </div>
