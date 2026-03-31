@@ -9,6 +9,8 @@ const EMPTY_DETAIL: FlightDetail = {
   registration: null,
   departureAirport: null,
   arrivalAirport: null,
+  departureAirportName: null,
+  arrivalAirportName: null,
   loading: false,
   error: null,
 };
@@ -32,13 +34,14 @@ export function useFlightDetail(
         ? airlineCache.get(icao24)!
         : undefined;
 
-      // Zet direct de velden die we al hebben (uit adsb.lol Aircraft-object)
       setDetail({
         airline: cachedAirline ?? null,
         aircraftType: selected.aircraftType,
         registration: selected.registration,
         departureAirport: null,
         arrivalAirport: null,
+        departureAirportName: null,
+        arrivalAirportName: null,
         loading: true,
         error: null,
       });
@@ -71,6 +74,8 @@ export function useFlightDetail(
           registration: selected.registration,
           departureAirport: data.departureAirport ?? null,
           arrivalAirport: data.arrivalAirport ?? null,
+          departureAirportName: data.departureAirportName ?? null,
+          arrivalAirportName: data.arrivalAirportName ?? null,
           loading: false,
           error: null,
         });

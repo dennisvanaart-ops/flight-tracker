@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAirlineName } from "@/lib/airlines";
 import { fetchRoute } from "@/lib/adsb";
+import { resolveAirport } from "@/lib/airportResolver";
 
 /**
  * GET /api/aircraft/[icao24]?callsign=&lat=&lon=
  *
- * Geeft airline-naam (statische lookup) en vertrek/aankomst (adsb.lol route)
- * terug voor het geselecteerde toestel.
+ * Geeft airline-naam (statische lookup), vertrek- en aankomstluchthaven
+ * (adsb.lol route + lokale airport resolutie) terug.
  *
- * lat en lon zijn nodig voor de route-plausibiliteitsbepaling van adsb.lol.
- * Als ze ontbreken, wordt alleen de airline naam teruggegeven.
+ * Airport codes worden via resolveAirport() omgezet:
+ *   ICAO (4-letter) → IATA (3-letter) als bekend, anders ICAO
+ *   Naam wordt meegestuurd als beschikbaar in de lokale dataset.
  */
 export async function GET(
   request: NextRequest,
@@ -29,14 +31,25 @@ export async function GET(
 
   let departureAirport: string | null = null;
   let arrivalAirport: string | null = null;
+  let departureAirportName: string | null = null;
+  let arrivalAirportName: string | null = null;
 
   if (callsign && lat && lon) {
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lon);
     if (!isNaN(latitude) && !isNaN(longitude)) {
       const route = await fetchRoute(callsign, latitude, longitude);
-      departureAirport = route.departureAirport;
-      arrivalAirport = route.arrivalAirport;
+
+      if (route.departureAirport) {
+        const dep = resolveAirport(route.departureAirport);
+        departureAirport = dep.displayCode;
+        departureAirportName = dep.name;
+      }
+      if (route.arrivalAirport) {
+        const arr = resolveAirport(route.arrivalAirport);
+        arrivalAirport = arr.displayCode;
+        arrivalAirportName = arr.name;
+      }
     }
   }
 
@@ -46,5 +59,7 @@ export async function GET(
     registration: null,
     departureAirport,
     arrivalAirport,
+    departureAirportName,
+    arrivalAirportName,
   });
 }

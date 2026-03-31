@@ -26,8 +26,12 @@ export interface FlightDetail {
   airline: string | null;
   aircraftType: string | null;
   registration: string | null;
+  // Weergavecode: IATA als beschikbaar, anders ICAO, anders null
   departureAirport: string | null;
   arrivalAirport: string | null;
+  // Leesbare naam (bijv. "Amsterdam Schiphol"), null als onbekend
+  departureAirportName: string | null;
+  arrivalAirportName: string | null;
   loading: boolean;
   error: string | null;
 }

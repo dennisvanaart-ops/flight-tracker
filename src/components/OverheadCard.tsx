@@ -57,14 +57,23 @@ export default function OverheadCard({ aircraft: a, detail }: OverheadCardProps)
 
           {/* Route: vertrek → aankomst */}
           {hasRoute && (
-            <div className="flex items-center gap-3 mb-2 text-xl md:text-2xl">
-              <span className="font-mono font-semibold text-gray-800">
-                {detail.departureAirport || "???"}
-              </span>
-              <span className="text-gray-300">→</span>
-              <span className="font-mono font-semibold text-gray-800">
-                {detail.arrivalAirport || "???"}
-              </span>
+            <div className="mb-2">
+              <div className="flex items-center gap-3 text-xl md:text-2xl">
+                <span className="font-mono font-semibold text-gray-800">
+                  {detail.departureAirport || "???"}
+                </span>
+                <span className="text-gray-300">→</span>
+                <span className="font-mono font-semibold text-gray-800">
+                  {detail.arrivalAirport || "???"}
+                </span>
+              </div>
+              {(detail.departureAirportName || detail.arrivalAirportName) && (
+                <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
+                  <span>{detail.departureAirportName || "—"}</span>
+                  <span>→</span>
+                  <span>{detail.arrivalAirportName || "—"}</span>
+                </div>
+              )}
             </div>
           )}
         </div>
